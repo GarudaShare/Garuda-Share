@@ -1,12 +1,10 @@
 #!/bin/sh
 #
 # run_wifi.sh
-# This script checks if the USB host interface is up.
-# If the USB interface is up - shutdown all Wi-Fi interfaces
+# This script manages Wi-Fi interfaces (AP/STA mode) independent of
+# USB host connection state.
 #
-# If it is not up - it brings up the Wi-Fi interface in the configured mode
-#
-# Behavior added:
+# Behavior:
 #   1. On every boot/power-on, the board always starts in AP mode.
 #   2. In STA mode, if the station fails to connect (or connects but has
 #      no internet) for STA_FAIL_TIMEOUT seconds, it automatically falls
@@ -87,17 +85,6 @@ register_device()
         ( cd "$REGISTER_SCRIPT_DIR" && exec python3 "$REGISTER_SCRIPT" >> /var/log/registerDevice.log 2>&1 ) &
 
         DEVICE_REGISTERED=1
-}
-
-is_usb_connected_to_host()
-{
-        if [ $(cat /sys/devices/platform/ahb/300000.gadget/udc/300000.gadget/is_selfpowered) == "0" ]; then
-                #echo "is_usb_connected_to_host: USB connected"
-                return 0;
-        else
-                #echo "is_usb_connected_to_host: USB not connected"
-                return 1;
-        fi
 }
 
 # Check if the STA is connected to the AP
@@ -325,11 +312,7 @@ while true; do
                 run_wifi_config
         fi
 
-        if is_usb_connected_to_host; then
-                #echo "USB connected"
-                stop_wifi
-                led_off
-        elif [ $WLAN_MODE = "AP" ]; then
+        if [ $WLAN_MODE = "AP" ]; then
                 #echo "Starting AP..."
                 start_wifi_ap
                 led_off
