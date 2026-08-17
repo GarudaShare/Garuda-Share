@@ -1,0 +1,68 @@
+diff --git a/Kconfig b/Kconfig
+index 694878ce..914b5604 100644
+--- a/Kconfig
++++ b/Kconfig
+@@ -422,6 +422,14 @@ config BOARD_QUIRK_SAM9X75_EB
+ 
+ endchoice
+ 
++menu "Garuda Options"
++
++config GARUDA_WIFI_DISABLE
++	bool "Set SDMMC1/CD as input and PDN Pin LOW"
++	default n
++
++endmenu
++
+ config LED_ON_BOARD
+ 	bool "There are LEDs on the board"
+ 	default n
+diff --git a/device/sama5d2/sama5d2.c b/device/sama5d2/sama5d2.c
+index d18f3ceb..0edff0d9 100644
+--- a/device/sama5d2/sama5d2.c
++++ b/device/sama5d2/sama5d2.c
+@@ -38,6 +38,8 @@ __attribute__((weak)) void sdmmc_cal_setup(void);
+ __attribute__((weak)) void at91_can_stdby_dis(void);
+ __attribute__((weak)) void peripherals_hw_reset(void);
+ 
++void at91_sdhc_wifi_disable(void);
++
+ #if defined(CONFIG_TWI)
+ static struct at91_flexcom flexcoms[] = {
+ 	{AT91C_ID_FLEXCOM0, FLEXCOM_TWI, AT91C_BASE_FLEXCOM0, 0},
+@@ -542,6 +544,10 @@ void hw_init(void)
+ 	/* Reset peripherals*/
+ 	peripherals_hw_reset();
+ #endif
++
++#ifdef CONFIG_GARUDA_WIFI_DISABLE
++	at91_sdhc_wifi_disable();
++#endif
+ }
+ 
+ #if defined(CONFIG_SPI)
+@@ -836,6 +842,24 @@ void at91_sdhc_hw_init(void)
+ }
+ #endif
+ 
++#ifdef CONFIG_GARUDA_WIFI_DISABLE
++
++void at91_sdhc_wifi_disable(void)
++{
++#define	PIO_PULLUP_HI	(PIO_PULLUP | PIO_DRVSTR_HI)
++
++	const struct pio_desc sdmmc_wifi_disable_pins[] = {
++		{"SDMMC1_CD",	AT91C_PIN_PA(30), 0, PIO_PULLUP_HI, PIO_INPUT},
++		{"WIFI_PDN",	AT91C_PIN_PC(31), 0, PIO_DRVSTR_HI, PIO_OUTPUT},
++		{(char *)0, 0, 0, PIO_DEFAULT, PIO_PERIPH_A},
++	};
++
++	usart_puts("at91_sdhc_wifi_disable: SDMMC1 CD High + PDN Low\n");
++	pio_configure(sdmmc_wifi_disable_pins);
++}
++
++#endif /* CONFIG_GARUDA_WIFI_DISABLE */
++
+ #ifdef CONFIG_MMU
+ void mmu_tlb_init(unsigned int *tlb)
+ {
